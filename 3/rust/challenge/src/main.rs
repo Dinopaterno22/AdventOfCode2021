@@ -183,6 +183,11 @@ fn second_part() {
 }
 
 fn main() {
+    println!("---------------------------------------");
+    println!("First Part: ");
     _first_part();
+    println!("---------------------------------------");
+    println!("Second Part: ");
     second_part();
+    println!("---------------------------------------");
 }
