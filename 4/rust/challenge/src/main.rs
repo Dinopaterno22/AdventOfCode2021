@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
 struct Board {
     numbers: Vec<Vec<u32>>,
     checked: Vec<Vec<bool>>,
+    complete: bool,
 }
 
 impl Board {
@@ -11,6 +13,7 @@ impl Board {
         Board {
             numbers: vec![],
             checked: vec![],
+            complete: false,
         }
     }
 
@@ -21,54 +24,41 @@ impl Board {
         self.numbers.push(num);
     }
 
-    fn mark_value(&mut self, num: &u32) {
-        for (_vec_index, i) in self.numbers.iter().enumerate() {
-            for (_row_index, j) in i.iter().enumerate() {
-                if j == num {
-                    self.checked[_vec_index][_row_index] = true;
-                }
+    fn mark_value(&mut self, num: &u32) -> bool {
+        for (_col_idx, col) in self.numbers.iter().enumerate() {
+            let row = col.iter().position(|x| x == num);
+            if let None = row {
+                continue;
             }
+            self.checked[_col_idx][row.unwrap()] = true;
         }
+        return self.check_win();
     }
 
-    fn check_win(&self) -> bool {
-        let mut col: bool = true;
-        let mut line: bool = true;
-        // Check lines
-        for i in self.checked.iter() {
-            line = true;
-            for j in i.iter() {
-                if j == &false {
-                    line = false;
-                    break;
-                }
-            }
-            if line {
-                break;
+    fn check_win(&mut self) -> bool {
+        for (_row_idx, row) in self.checked.iter().enumerate() {
+            if row.iter().all(|x| *x) {
+                self.complete = true;
+                return true;
             }
         }
 
-        for j in 0..self.checked.len() {
-            for c in self.checked.iter() {
-                col = true;
-                if c[j] == false {
-                    col = false;
-                    break;
-                }
-            }
-            if col {
-                break;
+        for i in 0..self.checked.len() {
+            if self.checked.iter().map(|x| x[i]).all(|x| x) {
+                self.complete = true;
+                return true;
             }
         }
-        return line || col;
+
+        return false;
     }
 
     fn sum(&self) -> u32 {
         let mut sum: u32 = 0;
-        for (_index, i) in self.numbers.iter().enumerate() {
-            for (_cenas, j) in i.iter().enumerate() {
-                if !self.checked[_index][_cenas] {
-                    sum += j;
+        for (check, number) in self.numbers.iter().zip(self.checked.iter()) {
+            for (c, n) in number.iter().zip(check.iter()) {
+                if !c {
+                    sum += n;
                 }
             }
         }
@@ -76,20 +66,25 @@ impl Board {
     }
 
     fn print(&self) {
-        for (_vec_index, i) in self.numbers.iter().enumerate() {
+        for (checked, number) in self.numbers.iter().zip(self.checked.iter()) {
             println!("");
-            for (_row_index, j) in i.iter().enumerate() {
-                print!("{} ", j);
-            }
-            println!("");
-            for (_row_index, _j) in i.iter().enumerate() {
-                print!("{} ", self.checked[_vec_index][_row_index]);
+            for (c, n) in number.iter().zip(checked.iter()) {
+                print!("{} ({}) ", n, c);
             }
         }
     }
 }
 
-fn main() -> Result<(), Error> {
+fn check_all_boards(boards: Vec<Board>) -> bool {
+    for board in boards {
+        if !board.complete {
+            return false;
+        }
+    }
+    return true;
+}
+
+fn first_part() -> Result<(), Error> {
     let filename = "../../input.txt";
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
@@ -119,18 +114,10 @@ fn main() -> Result<(), Error> {
     }
     boards.push(board);
 
-    // for i in boards.iter() {
-    //     i.print();
-    //     println!("");
-    // }
-
-    // Ate aqui esta tudo bem
-
     let mut end: bool = false;
-    for (_index, num) in called.iter().enumerate() {
+    for num in called.iter() {
         for b in boards.iter_mut() {
-            b.mark_value(&num);
-            if b.check_win() {
+            if b.mark_value(&num) {
                 println!("{}", num * b.sum());
                 end = true;
                 break;
@@ -141,5 +128,65 @@ fn main() -> Result<(), Error> {
         }
     }
 
+    Ok(())
+}
+
+fn second_part() -> Result<(), Error> {
+    let filename = "../../input.txt";
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+
+    let mut line_iterator = reader.lines();
+    let mut boards: Vec<Board> = vec![];
+    let mut board: Board = Board::new();
+    let mut board_set: HashSet<usize> = HashSet::new();
+    let mut completed_boards: Vec<usize> = vec![];
+    let mut winning_numbers: Vec<u32> = Vec::new();
+    let called: Vec<u32> = line_iterator
+        .next()
+        .unwrap()?
+        .split(',')
+        .map(|x| x.parse::<u32>().unwrap())
+        .collect();
+
+    line_iterator.next();
+
+    // Populate the board
+    for (_index, line) in line_iterator.enumerate() {
+        let line = line.unwrap();
+        if line == "" {
+            // Create a new board
+            boards.push(board);
+            board = Board::new();
+            continue;
+        }
+        board.add_row(&line);
+    }
+    boards.push(board);
+
+    for (_index, num) in called.iter().enumerate() {
+        for (_board_idx, board) in boards.iter_mut().enumerate() {
+            if board_set.contains(&_board_idx) {
+                continue;
+            }
+            if board.mark_value(num) {
+                board_set.insert(_board_idx);
+                completed_boards.push(_board_idx);
+                winning_numbers.push(*num);
+            }
+        }
+    }
+
+    let last_board_idx = *completed_boards.last().unwrap();
+    let win = winning_numbers.last().unwrap();
+    let sum = boards[last_board_idx].sum();
+    let result = win * sum;
+    println!("Winning number {}, Sum: {}, Result {}", win, sum, result);
+    Ok(())
+}
+
+fn main() -> Result<(), Error> {
+    first_part()?;
+    second_part()?;
     Ok(())
 }
