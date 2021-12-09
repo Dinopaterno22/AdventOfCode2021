@@ -1,4 +1,5 @@
 use std::cmp::max;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -6,6 +7,34 @@ use std::io::{BufRead, BufReader, Error};
 struct Point {
     x: u32,
     y: u32,
+}
+
+struct PointMap {
+    x_size: u32,
+    y_size: u32,
+    contents: Vec<u32>,
+}
+
+impl PointMap {
+    pub fn new(x_size: u32, y_size: u32) -> Self {
+        return PointMap {
+            x_size: x_size,
+            y_size: y_size,
+            contents: Vec::new(),
+        };
+    }
+
+    fn get_point(self, x: u32, y: u32) -> u32 {
+        if y > self.y_size {
+            let index: usize = (x * (y + 1)) as usize;
+            return self.contents[index];
+        }
+        return 0;
+    }
+    fn set_point(self, x: u32, y: u32) {
+        let index: usize = (x * (y + 1)) as usize;
+        self.contents[index] += 1;
+    }
 }
 
 impl Point {
@@ -39,21 +68,29 @@ fn initialize_map(x_size: u32, y_size: u32) -> Vec<Vec<u32>> {
     return map;
 }
 
-fn draw_line(map: Vec<Vec<u32>>, line: (Point, Point)) {
+fn _draw_line(map: PointMap, line: (Point, Point)) {
     if line.0.x - line.1.x != 0 {
-        draw_horizontal_line(map, line);
+        _draw_horizontal_line(map, line);
     } else if line.0.y - line.1.y != 0 {
-        draw_vertical_line();
+        _draw_vertical_line(map, line);
     }
 }
 
-fn draw_horizontal_line(map: Vec<Vec<u32>>, line: (Point, Point)) {
+fn _draw_horizontal_line(map: PointMap, line: (Point, Point)) {
     let y = line.0.y;
 
-    for i in line.0.x..line.1.x {}
+    for i in line.0.x..line.1.x {
+        map.set_point(i, y);
+    }
 }
 
-fn draw_vertical_line() {}
+fn _draw_vertical_line(map: PointMap, line: (Point, Point)) {
+    let x = line.0.x;
+
+    for i in line.0.y..line.1.y {
+        map.set_point(x, i);
+    }
+}
 
 fn main() -> Result<(), Error> {
     let filename = "../../input_test.txt";
@@ -83,7 +120,7 @@ fn main() -> Result<(), Error> {
         lines.push(points);
     }
 
-    let mut map: Vec<Vec<u32>> = initialize_map(x_size, y_size);
+    let mut map: PointMap = PointMap::new(x_size, y_size);
 
     Ok(())
 }
