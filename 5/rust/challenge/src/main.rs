@@ -1,5 +1,5 @@
-use std::cmp::min;
 use std::cmp::max;
+use std::cmp::min;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -44,11 +44,42 @@ impl PointMap {
     }
 
     fn draw_line(&mut self, line: (Point, Point)) {
-        if ((line.0.x as i32) - (line.1.x as i32)) != 0 {
+        let horizontal: bool = ((line.0.x as i32) - (line.1.x as i32)) != 0;
+        let vertical: bool = ((line.0.y as i32) - (line.1.y as i32)) != 0;
+        if vertical && horizontal {
+            self.draw_diagonal_line(line);
+        } else if horizontal {
             self.draw_horizontal_line(line);
-        } else if ((line.0.y as i32) - (line.1.y as i32)) != 0 {
+        } else if vertical {
             self.draw_vertical_line(line);
         }
+    }
+
+    fn draw_diagonal_line(&mut self, line: (Point, Point)) {
+        // Determine Quadrant
+        let horizontal_decrease: bool = ((line.0.x as i32) - (line.1.x as i32)) > 0;
+        let vertical_decrease: bool = ((line.0.y as i32) - (line.1.y as i32)) > 0;
+        
+        let num_iter : u32 = ((line.0.x as i32) - (line.1.x as i32)).abs() as u32;
+
+        let mut x : u32 = line.0.x;
+        let mut y : u32 = line.0.y;
+        for _i in 0..num_iter{
+            self.set_point(x, y);
+            if vertical_decrease{
+                y -= 1;
+            }
+            else{
+                y+=1;
+            }
+            if horizontal_decrease{
+                x -= 1;
+            }
+            else{
+                x += 1;
+            }
+        }
+        self.set_point(x,y);
     }
 
     fn draw_horizontal_line(&mut self, line: (Point, Point)) {
@@ -98,7 +129,7 @@ fn split_coordinates(s: String) -> (Point, Point) {
 }
 
 fn main() -> Result<(), Error> {
-    let filename = "../../input_test.txt";
+    let filename = "../../input.txt";
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
 
@@ -118,12 +149,11 @@ fn main() -> Result<(), Error> {
         }
 
         // Disregard diagonals
-        if points.0.x != points.1.x && points.0.y != points.1.y {
-            continue;
-        }
+        // if points.0.x != points.1.x && points.0.y != points.1.y {
+        //     continue;
+        // }
         lines.push(points);
     }
-
 
     let mut map: PointMap = PointMap::new(x_size + 1, y_size + 1);
     for line in lines {
@@ -137,7 +167,7 @@ fn main() -> Result<(), Error> {
         }
     }
 
-    map.print();
+    // map.print();
 
     println!("Result: {}", count);
 
