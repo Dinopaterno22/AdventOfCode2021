@@ -74,7 +74,7 @@ impl PointMap {
         println!();
         for mut _line in 0..self._y_size {
             for j in 0..self._x_size {
-                print!(" {} ", self.contents[((_line + 1) * j) as usize]);
+                print!(" {} ", self.contents[(j + (_line * self._step)) as usize]);
             }
             println!();
             _line += 1;
@@ -98,7 +98,7 @@ fn split_coordinates(s: String) -> (Point, Point) {
 }
 
 fn main() -> Result<(), Error> {
-    let filename = "../../input.txt";
+    let filename = "../../input_test.txt";
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
 
@@ -136,6 +136,8 @@ fn main() -> Result<(), Error> {
             count += 1;
         }
     }
+
+    map.print();
 
     println!("Result: {}", count);
 
