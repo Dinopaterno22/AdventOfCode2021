@@ -1,5 +1,5 @@
+use std::cmp::min;
 use std::cmp::max;
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Error};
 
@@ -10,121 +10,100 @@ struct Point {
 }
 
 struct PointMap {
-    x_size: u32,
-    y_size: u32,
-    step : u32,
+    _x_size: u32,
+    _y_size: u32,
+    _step: u32,
     contents: Vec<u32>,
 }
 
 impl PointMap {
     pub fn new(x: u32, y: u32) -> Self {
-        return PointMap {
-            x_size: x,
-            y_size: y,
-            step: x,
-            contents: Vec::new(),
-        };
+        let mut content_vec: Vec<u32> = Vec::new();
+        let size: u32 = x * y;
+        for _i in 0..size {
+            content_vec.push(0);
+        }
+        PointMap {
+            _x_size: x,
+            _y_size: y,
+            _step: x,
+            contents: content_vec,
+        }
     }
 
-    fn get_point(self, x: u32, y: u32) -> u32 {
-        if y > self.y_size {
-            let index: usize = (x * (y + 1)) as usize;
+    fn _get_point(self, x: u32, y: u32) -> u32 {
+        if y > self._y_size {
+            let index: usize = (x + (y * self._step)) as usize;
             return self.contents[index];
         }
-        return 0;
+        0
     }
     fn set_point(&mut self, x: u32, y: u32) {
-        let index: usize = (x * (y + 1)) as usize;
+        let index: usize = (x + (y * self._step)) as usize;
         self.contents[index] += 1;
     }
 
-    fn _draw_line(&mut self, line: (Point, Point)) {
-        if line.0.x - line.1.x != 0 {
-            _draw_horizontal_line(self, line);
-        } else if line.0.y - line.1.y != 0 {
-            _draw_vertical_line(self, line);
+    fn draw_line(&mut self, line: (Point, Point)) {
+        if ((line.0.x as i32) - (line.1.x as i32)) != 0 {
+            self.draw_horizontal_line(line);
+        } else if ((line.0.y as i32) - (line.1.y as i32)) != 0 {
+            self.draw_vertical_line(line);
         }
     }
-    
-    fn _draw_horizontal_line(&mut self, line: (Point, Point)) {
+
+    fn draw_horizontal_line(&mut self, line: (Point, Point)) {
         let y = line.0.y;
-    
-        for i in line.0.x..line.1.x {
+        let min = min(line.0.x, line.1.x);
+        let max = max(line.0.x, line.1.x);
+        for i in min..=max {
             self.set_point(i, y);
         }
     }
-    
-    fn _draw_vertical_line(&mut self, line: (Point, Point)) {
+
+    fn draw_vertical_line(&mut self, line: (Point, Point)) {
         let x = line.0.x;
-    
-        for i in line.0.y..line.1.y {
+        let min = min(line.0.y, line.1.y);
+        let max = max(line.0.y, line.1.y);
+        for i in min..=max {
             self.set_point(x, i);
+        }
+    }
+
+    fn print(self) {
+        println!("Content Length: {}", self.contents.len());
+        println!();
+        for mut _line in 0..self._y_size {
+            for j in 0..self._x_size {
+                print!(" {} ", self.contents[((_line + 1) * j) as usize]);
+            }
+            println!();
+            _line += 1;
         }
     }
 }
 
 impl Point {
     pub fn new(s: &str) -> Self {
-        let coord_str: Vec<&str> = s.split(",").collect();
-        return Point {
+        let coord_str: Vec<&str> = s.split(',').collect();
+        Point {
             x: coord_str[0].parse::<u32>().unwrap(),
             y: coord_str[1].parse::<u32>().unwrap(),
-        };
+        }
     }
 }
 
 fn split_coordinates(s: String) -> (Point, Point) {
-    let split = s.split_once("->").unwrap();
-    return (Point::new(split.0), Point::new(split.1));
-}
-
-fn initialize_map(x_size: u32, y_size: u32) -> Vec<Vec<u32>> {
-    let mut map: Vec<Vec<u32>> = Vec::new();
-
-    for _x in 0..x_size {
-        map.push(Vec::new());
-    }
-
-    for i in map.iter_mut() {
-        for _y in 0..y_size {
-            i.push(0);
-        }
-    }
-
-    return map;
-}
-
-fn _draw_line(map: &mut PointMap, line: (Point, Point)) {
-    if line.0.x - line.1.x != 0 {
-        _draw_horizontal_line(map, line);
-    } else if line.0.y - line.1.y != 0 {
-        _draw_vertical_line(map, line);
-    }
-}
-
-fn _draw_horizontal_line(map: &mut PointMap, line: (Point, Point)) {
-    let y = line.0.y;
-
-    for i in line.0.x..line.1.x {
-        map.set_point(i, y);
-    }
-}
-
-fn _draw_vertical_line(map: &mut PointMap, line: (Point, Point)) {
-    let x = line.0.x;
-
-    for i in line.0.y..line.1.y {
-        map.set_point(x, i);
-    }
+    let split = s.split_once(" -> ").unwrap();
+    (Point::new(split.0), Point::new(split.1))
 }
 
 fn main() -> Result<(), Error> {
-    let filename = "../../input_test.txt";
+    let filename = "../../input.txt";
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
 
     let (mut x_size, mut y_size): (u32, u32) = (0, 0);
-    let mut lines: Vec<(Point, Point)> = vec![];
+    let mut lines: Vec<(Point, Point)> = Vec::new();
 
     for line in reader.lines() {
         let line = line?;
@@ -139,18 +118,26 @@ fn main() -> Result<(), Error> {
         }
 
         // Disregard diagonals
-        if points.0.x != points.1.x || points.0.y != points.1.y {
+        if points.0.x != points.1.x && points.0.y != points.1.y {
             continue;
         }
-
         lines.push(points);
     }
 
-    let mut map: PointMap = PointMap::new(x_size, y_size);
-    for line in lines{
-        _draw_line(&mut map, line);
+
+    let mut map: PointMap = PointMap::new(x_size + 1, y_size + 1);
+    for line in lines {
+        map.draw_line(line);
     }
-    
+
+    let mut count: u32 = 0;
+    for i in map.contents.iter() {
+        if i > &1 {
+            count += 1;
+        }
+    }
+
+    println!("Result: {}", count);
 
     Ok(())
 }
